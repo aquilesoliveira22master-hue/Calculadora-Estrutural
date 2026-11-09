@@ -1,0 +1,323 @@
+/*===== VARIÁVEIS DE COR =====*/
+:root {
+  --az: #155eef;
+  --bd: #dce3ed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI",Arial,sans-serif;
+  background: #f3f6fb;
+  color: #172033;
+}
+
+/*===== CABEÇALHO E LAYOUT (menu lateral + área principal) =====*/
+header {
+  background: linear-gradient(120deg,#0b2450,#155eef);
+  color: #fff;
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  font-size: 23px;
+}
+
+header p {
+  margin: 0;
+  opacity: .85;
+}
+
+.wrap {
+  max-width: 1500px;
+  margin: 16px auto;
+  padding: 0 14px;
+  display: grid;
+  grid-template-columns: 370px minmax(0,1fr);
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+
+h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 14px;
+  margin: 12px 0 6px;
+  color: #0b2450;
+}
+
+details {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/*===== CAMPOS E BOTÕES =====*/
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475467;
+  margin: 8px 0 3px;
+}
+
+input,select {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+}
+
+.g2,.g4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  background: #eaf1ff;
+  color: #164194;
+}
+
+button.pri {
+  background: var(--az);
+  color: #fff;
+}
+
+button.del {
+  background: #fee4e2;
+  color: #b42318;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+/*===== ABAS E PAINÉIS =====*/
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  background: #fff;
+  border: 1px solid var(--bd);
+  color: #475467;
+}
+
+.tab.on {
+  background: #eaf1ff;
+  border-color: var(--az);
+  color: var(--az);
+}
+
+.panel {
+  display: none;
+}
+
+.panel.on {
+  display: block;
+}
+
+/*===== CARTÕES DE MÉTRICAS, CANVAS E TABELAS =====*/
+.mets {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.met {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.met small {
+  color: #667085;
+}
+
+.met b {
+  display: block;
+  font-size: 19px;
+  margin: 5px 0;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+
+#structure,#defCanvas {
+  height: 400px;
+  cursor: pointer;
+}
+
+.ch {
+  height: 260px;
+}
+
+.pc {
+  height: 230px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+td,th {
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 1px solid #edf0f4;
+}
+
+th {
+  color: #475467;
+  font-size: 11px;
+}
+
+/*===== ETIQUETAS DE STATUS (verde = seguro, amarelo = atenção, vermelho = falha) =====*/
+.chip {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.s {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.a {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.f {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.n {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/*===== NOTAS, CARGAS, BARRAS DE UTILIZAÇÃO =====*/
+.note {
+  background: #f8fafc;
+  border: 1px solid var(--bd);
+  border-radius: 9px;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ld {
+  background: #f8fafc;
+  border: 1px solid var(--bd);
+  border-radius: 9px;
+  padding: 8px;
+  margin: 8px 0;
+}
+
+.ld .h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.sec {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.small {
+  font-size: 11px;
+  color: #475467;
+  line-height: 1.5;
+}
+
+.bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 5px;
+  overflow: hidden;
+  min-width: 70px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+}
+
+.g3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/*===== RESPONSIVO (tablet e celular) =====*/
+@media (max-width:1050px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width:650px) {
+  .mets,.g3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .g3 {
+    grid-template-columns: 1fr;
+  }
+
+}

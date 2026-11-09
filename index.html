@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>
+   A3 - Calculadora Estrutural Interativa
+  </title>
+  <link href="styles.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <!-- CABEÇALHO -->
+  <header>
+   <div>
+    <h1>
+     A3 — Calculadora Estrutural Interativa
+    </h1>
+    <p>
+     Resistência dos Materiais I | Engenharia da Computação
+    </p>
+   </div>
+   <button class="pri" onclick="report()">
+    📄 Gerar relatório (PDF)
+   </button>
+  </header>
+  <div class="wrap">
+   <!-- MENU LATERAL: preenchido pelo script.js (geometria, seções, materiais, pinos e cargas) -->
+   <aside id="side">
+   </aside>
+   <main>
+    <!-- ABAS -->
+    <nav class="tabs">
+     <button class="tab on" data-t="ov">
+      Visão geral
+     </button>
+     <button class="tab" data-t="br">
+      Barras e pinos
+     </button>
+     <button class="tab" data-t="df">
+      Deformações
+     </button>
+     <button class="tab" data-t="ds">
+      Diagramas N/V/M
+     </button>
+     <button class="tab" data-t="dg">
+      Diagnóstico
+     </button>
+     <button class="tab" data-t="va">
+      Validação
+     </button>
+    </nav>
+    <!-- ABA 1: VISÃO GERAL (desenho interativo + diagnóstico rápido) -->
+    <section class="panel on" id="ov">
+     <div class="mets" id="mets">
+     </div>
+     <div class="card">
+      <h2>
+       Modelo estrutural interativo
+       <small style="font-weight:400;color:#155eef">
+        (arraste B, C, as forças e a ponta das setas das forças para mudar o ângulo)
+       </small>
+      </h2>
+      <div class="g2" style="margin-bottom:8px">
+       <label>
+        Escala da deformação
+        <select id="ampMode">
+         <option value="auto">
+          Ampliada automaticamente
+         </option>
+         <option value="manual">
+          Ampliação manual
+         </option>
+         <option value="real">
+          Escala real (×1)
+         </option>
+        </select>
+       </label>
+       <label>
+        Ampliação manual (×)
+        <input id="ampK" max="2000" min="1" type="range" value="100"/>
+       </label>
+      </div>
+      <canvas id="structure">
+      </canvas>
+     </div>
+     <div class="card">
+      <h2>
+       Diagnóstico rápido
+      </h2>
+      <div id="quick">
+      </div>
+     </div>
+     <div class="card">
+      <h2>
+       Equilíbrio estático da viga
+      </h2>
+      <table>
+       <tbody id="eq">
+       </tbody>
+      </table>
+     </div>
+     <div class="card">
+      <h2>
+       Hipóteses e limitações
+      </h2>
+      <div class="note">
+       • Barras BD (acima, fixa em D) e CE (abaixo, fixa em E) são verticais e biarticuladas; N>0 = tração.
+       <br/>
+       • Cargas aplicadas sobre o eixo da viga. A componente horizontal das forças inclinadas é equilibrada por uma reação horizontal H no pino B (modelo original da A3 preservado); ela gera esforço normal N(x) na viga.
+       <br/>
+       • Ruptura por escoamento (σ ≥ fy) para viga e barras; para pinos, τ ≥ τ de ruptura ao cisalhamento. Flambagem das barras comprimidas não é considerada.
+       <br/>
+       • Deslocamentos: elasticidade linear; deflexão da viga por integração de M/EI com as condições v(B), v(C) dadas pelo alongamento das barras (δ = N·L/EA).
+       <br/>
+       • Classificação: FS ≥ 1,5 seguro; 1 ≤ FS < 1,5 atenção; FS < 1 falha.
+      </div>
+     </div>
+    </section>
+    <!-- ABA 2: BARRAS E PINOS -->
+    <section class="panel" id="br">
+     <div class="g3">
+      <div class="card">
+       <h2>
+        Barra BD (superior)
+       </h2>
+       <table>
+        <tbody id="tBD">
+        </tbody>
+       </table>
+      </div>
+      <div class="card">
+       <h2>
+        Barra CE (inferior)
+       </h2>
+       <table>
+        <tbody id="tCE">
+        </tbody>
+       </table>
+      </div>
+     </div>
+     <div class="card">
+      <h2>
+       Ruptura dos pinos por cisalhamento
+      </h2>
+      <div class="g3">
+       <canvas class="pc" id="pinB">
+       </canvas>
+       <canvas class="pc" id="pinC">
+       </canvas>
+      </div>
+      <table style="margin-top:10px">
+       <thead>
+        <tr>
+         <th>
+          Ligação
+         </th>
+         <th>
+          Nº pinos × planos
+         </th>
+         <th>
+          Área resistente
+         </th>
+         <th>
+          τ atuante
+         </th>
+         <th>
+          τ ruptura
+         </th>
+         <th>
+          Força de ruptura
+         </th>
+         <th>
+          FS
+         </th>
+         <th>
+          Estado
+         </th>
+        </tr>
+       </thead>
+       <tbody id="tPins">
+       </tbody>
+      </table>
+     </div>
+    </section>
+    <!-- ABA 3: DEFORMAÇÕES -->
+    <section class="panel" id="df">
+     <div class="card">
+      <h2>
+       Estrutura original (contínua) × deformada (tracejada)
+      </h2>
+      <canvas id="defCanvas">
+      </canvas>
+      <div class="note" style="margin-top:8px">
+       A deformação é ampliada para ser visível; o fator aparece no desenho. Use o controle da aba “Visão geral”. Valores numéricos abaixo estão em escala real.
+      </div>
+     </div>
+     <div class="card">
+      <h2>
+       Deslocamentos verticais (↑ positivo)
+      </h2>
+      <table>
+       <thead>
+        <tr>
+         <th>
+          Ponto
+         </th>
+         <th>
+          Deslocamento
+         </th>
+         <th>
+          Sentido
+         </th>
+        </tr>
+       </thead>
+       <tbody id="tDisp">
+       </tbody>
+      </table>
+     </div>
+     <div class="card">
+      <h2>
+       Deformação longitudinal das barras
+      </h2>
+      <table>
+       <tbody id="tBars">
+       </tbody>
+      </table>
+     </div>
+    </section>
+    <!-- ABA 4: DIAGRAMAS N, V, M -->
+    <section class="panel" id="ds">
+     <div class="card">
+      <canvas class="ch" id="cN">
+      </canvas>
+     </div>
+     <div class="card">
+      <canvas class="ch" id="cV">
+      </canvas>
+     </div>
+     <div class="card">
+      <canvas class="ch" id="cM">
+      </canvas>
+     </div>
+    </section>
+    <!-- ABA 5: DIAGNÓSTICO FINAL -->
+    <section class="panel" id="dg">
+     <div class="card">
+      <h2>
+       Diagnóstico final da estrutura
+      </h2>
+      <label>
+       Multiplicador de carga (simulação de aumento progressivo):
+       <b id="lamv">
+        ×1,00
+       </b>
+       <input id="lam" max="500" min="10" type="range" value="100"/>
+      </label>
+      <table style="margin-top:10px">
+       <thead>
+        <tr>
+         <th>
+          Elemento
+         </th>
+         <th>
+          Tensão máx.
+         </th>
+         <th>
+          Limite
+         </th>
+         <th>
+          FS
+         </th>
+         <th>
+          Resultado
+         </th>
+         <th>
+          Utilização
+         </th>
+        </tr>
+       </thead>
+       <tbody id="tDiag">
+       </tbody>
+      </table>
+     </div>
+     <div class="card">
+      <h2>
+       Ordem de falha (aumento progressivo das cargas)
+      </h2>
+      <div id="order">
+      </div>
+     </div>
+    </section>
+    <!-- ABA 6: VALIDAÇÃO -->
+    <section class="panel" id="va">
+     <div class="card">
+      <h2>
+       Validação analítica (conferência independente)
+      </h2>
+      <table>
+       <thead>
+        <tr>
+         <th>
+          Grandeza
+         </th>
+         <th>
+          Programa
+         </th>
+         <th>
+          Verificação independente
+         </th>
+         <th>
+          Diferença
+         </th>
+        </tr>
+       </thead>
+       <tbody id="tVal">
+       </tbody>
+      </table>
+      <div class="note" id="valMsg" style="margin-top:10px">
+      </div>
+     </div>
+    </section>
+   </main>
+  </div>
+  <!-- Todo o cálculo e desenho está em script.js -->
+  <script src="script.js">
+  </script>
+ </body>
+</html>
