@@ -108,7 +108,7 @@
        <br/>
        • Cargas aplicadas sobre o eixo da viga. A componente horizontal das forças inclinadas é equilibrada por uma reação horizontal H no pino B (modelo original da A3 preservado); ela gera esforço normal N(x) na viga.
        <br/>
-       • Ruptura por escoamento (σ ≥ fy) para viga e barras; para pinos, τ ≥ τ de ruptura ao cisalhamento. Flambagem das barras comprimidas não é considerada.
+       • Ruptura por escoamento (σ ≥ fy) para viga e barras; para pinos, τ ≥ τ de ruptura ao cisalhamento; nas chapas, verifica-se também a pressão média de contato por critério simplificado σesm = F/(n·d·t), comparada a fy. Flambagem das barras comprimidas não é considerada.
        <br/>
        • Deslocamentos: elasticidade linear; deflexão da viga por integração de M/EI com as condições v(B), v(C) dadas pelo alongamento das barras (δ = N·L/EA).
        <br/>
@@ -140,7 +140,7 @@
      </div>
      <div class="card">
       <h2>
-       Ruptura dos pinos por cisalhamento
+       Verificação dos pinos: cisalhamento e esmagamento
       </h2>
       <div class="g3">
        <canvas class="pc" id="pinB">
@@ -154,6 +154,7 @@
          <th>
           Ligação
          </th>
+         <th>Material do pino</th>
          <th>
           Nº pinos × planos
          </th>
@@ -179,6 +180,12 @@
        </thead>
        <tbody id="tPins">
        </tbody>
+      </table>
+      <h3 style="margin-top:16px">Esmagamento das peças conectadas</h3>
+      <div class="note">Verificação simplificada da pressão média de contato: σesm = F/(n · d · t). O limite adotado é fy do material de cada peça. Informe as espessuras reais da viga e das barras no menu lateral.</div>
+      <table style="margin-top:8px">
+       <thead><tr><th>Ligação</th><th>Peça verificada</th><th>Espessura</th><th>σ esmagamento</th><th>fy</th><th>FS</th><th>Estado</th></tr></thead>
+       <tbody id="tBearing"></tbody>
       </table>
      </div>
     </section>
