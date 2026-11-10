@@ -16,23 +16,27 @@ const EL = [["beam", "Viga AC"], ["bd", "Barra BD"], ["ce", "Barra CE"], ["pB", 
 // ---------------------------------------------------------------------
 const fld = (id, l, val = '', x = '') => `<label>${l}<input id="${id}" type="number" step="any" value="${val}" ${x}></label>`;
 const sel = (attr, val, o) => `<select ${attr}>${o.map(([a, b]) => `<option value="${a}" ${a == val ? 'selected' : ''}>${b}</option>`).join('')}</select>`;
-// Bloco de material: lista de materiais + E, fy, τ e ρ editáveis
-const matBlock = k => `<label>Material<select id="m_${k}">${Object.keys(MATS).map(n => `<option>${n}</option>`).join('')}</select></label><div class="g4">${fld('E_' + k, 'E (GPa)')}${fld('fy_' + k, 'fy (MPa)')}${fld('t_' + k, 'τ ruptura (MPa)')}${fld('r_' + k, 'ρ densidade (kg/m³)')}</div>`;
-// Bloco de seção: retangular (b x h) ou circular (d), com figura e propriedades
+const unitSel = (id, unit='mm', area=false) => sel(`id="${id}"`, unit, area ? [['m2','m²'],['cm2','cm²'],['mm2','mm²']] : [['m','m'],['cm','cm'],['mm','mm']]);
+const lengthField = (id, label, value, unitId=id+'_u', unit='m') => `<div>${fld(id,label,value)}<label>Unidade ${unitSel(unitId,unit)}</label></div>`;
+// Bloco de material: propriedades editáveis e identificação para materiais personalizados.
+const matBlock = k => `<label>Material<select id="m_${k}">${Object.keys(MATS).map(n => `<option>${n}</option>`).join('')}</select></label><div id="custom_${k}" style="display:none">${`<label>Nome ou código do material<input id="mn_${k}" type="text" placeholder="Ex.: ASTM A36"></label>`}</div><div class="g4">${fld('E_' + k, 'E (GPa)')}${fld('fy_' + k, 'fy (MPa)')}${fld('t_' + k, 'τ ruptura (MPa)')}${fld('r_' + k, 'ρ densidade (kg/m³)')}</div>`;
+// Bloco de seção: permite informar dimensões ou área com geometria definida.
 const secBlock = (k, b, h) => `<label>Seção transversal<select id="s_${k}"><option value="r">Retangular</option><option value="c">Circular maciça</option></select></label>
-<div class="g2" id="rect_${k}">${fld('b_' + k, 'Largura b (mm)', b)}${fld('h_' + k, 'Altura h (mm)', h)}</div><div id="circ_${k}" style="display:none">${fld('dd_' + k, 'Diâmetro d (mm)', 20)}</div>
+<label>Forma de informar<select id="mode_${k}"><option value="dims">Informar dimensões</option><option value="area">Informar área diretamente</option></select></label>
+<div id="dims_${k}"><div class="g2" id="rect_${k}">${lengthField('b_'+k,'Largura b',b,'u_b_'+k,'mm')}${lengthField('h_'+k,'Altura h',h,'u_h_'+k,'mm')}</div><div id="circ_${k}" style="display:none">${lengthField('dd_'+k,'Diâmetro d',20,'u_dd_'+k,'mm')}</div></div>
+<div id="area_${k}" style="display:none"><div class="g2">${fld('area_' + k,'Área A',2000)}<label>Unidade ${unitSel('u_area_'+k,'mm2',true)}</label></div><div id="areaRect_${k}">${lengthField('areaB_'+k,'Largura b conhecida',b,'u_areaB_'+k,'mm')}<div class="small">A altura será calculada automaticamente a partir da área e da largura informadas.</div></div><div id="areaCirc_${k}" class="small">O diâmetro será calculado automaticamente a partir da área circular.</div></div>
 <div class="sec"><div id="fig_${k}"></div><div id="pr_${k}" class="small"></div></div>`;
-// Bloco dos pinos de uma ligação (B ou C): diâmetro, quantidade, cisalhamento e material
-const pinBlock = s => `<h3>Ligação ${s}</h3><div class="g2">${fld('d_' + s, 'Diâmetro d (mm)', 20)}${fld('n_' + s, 'Nº de pinos', 2, 'min="1" step="1"')}</div>
-<label>Tipo de cisalhamento<select id="sh_${s}"><option value="single">Simples (1 plano)</option><option value="double">Duplo (2 planos)</option></select></label>${matBlock('p' + s)}`;
+// Bloco dos pinos: diâmetro e espessuras das peças para verificação de esmagamento.
+const pinBlock = s => `<h3>Ligação ${s}</h3><div class="g2">${lengthField('d_' + s, 'Diâmetro d', 20, 'u_d_'+s, 'mm')}${fld('n_' + s, 'Nº de pinos', 2, 'min="1" step="1"')}</div>
+<label>Tipo de cisalhamento<select id="sh_${s}"><option value="single">Simples (1 plano)</option><option value="double">Duplo (2 planos)</option></select></label><h3>Espessuras para esmagamento</h3><div class="g2">${lengthField('tb_'+s,'Espessura da viga AC',10,'u_tb_'+s,'mm')}${lengthField('tm_'+s,`Espessura da barra ${s=='B'?'BD':'CE'}`,10,'u_tm_'+s,'mm')}</div><div class="small">Os valores iniciais de espessura são exemplos. Informe as espessuras reais das peças conectadas.</div>${matBlock('p' + s)}`;
 // Escreve na página todas as seções do menu lateral (geometria, seções, pinos e cargas)
 $('side').innerHTML = `
-<details><summary>1. Geometria e apoios</summary><div class="g2">${fld('L', 'Comprimento AC (m)', 3)}${fld('B', 'Posição B (m)', 1)}${fld('C', 'Posição C (m)', 3)}${fld('LA', 'Comprimento BD (m)', 1.5)}${fld('LB', 'Comprimento CE (m)', 1)}</div></details>
+<details><summary>1. Geometria e apoios</summary><div class="g2">${lengthField('L','Comprimento AC',3,'u_L','m')}${lengthField('B','Posição B',1,'u_B','m')}${lengthField('C','Posição C',3,'u_C','m')}${lengthField('LA','Comprimento BD',1.5,'u_LA','m')}${lengthField('LB','Comprimento CE',1,'u_LB','m')}</div></details>
 <details><summary>2. Viga AC — seção e material</summary>${secBlock('beam', 100, 200)}${matBlock('beam')}</details>
 <details><summary>3. Barra BD — seção e material</summary>${secBlock('bd', 20, 20)}${matBlock('bd')}</details>
 <details><summary>4. Barra CE — seção e material</summary>${secBlock('ce', 20, 20)}${matBlock('ce')}</details>
 <details><summary>5. Pinos e rebites</summary>${pinBlock('B')}${pinBlock('C')}</details>
-<details><summary>6. Carregamentos</summary><div id="loads"></div><div class="g2" style="margin-top:8px"><button onclick="addLoad('F')">+ Força</button><button onclick="addLoad('Q')">+ Carga distribuída</button><button onclick="addLoad('M')">+ Momento</button></div>
+<details><summary>6. Forças</summary><div id="loads"></div><div class="g2" style="margin-top:8px"><button onclick="addLoad('F')">+ Força</button><button onclick="addLoad('Q')">+ Carga distribuída</button><button onclick="addLoad('M')">+ Momento</button></div>
 <div class="small" style="margin-top:6px">Ângulo: 0° = →, 90° = ↑, 270° = ↓ (anti-horário). Distribuída: uniforme (q inicial = final), triangular (uma ponta 0) ou trapezoidal.</div></details>
 <div class="g2"><button onclick="restore()">Caso-teste oficial</button><button onclick="restore()">Restaurar padrão</button></div><div id="msg" class="small" style="margin-top:8px"></div>`;
 // Permite abrir uma seção por vez; todas começam recolhidas ao iniciar.
@@ -53,14 +57,20 @@ $('side').querySelectorAll('details').forEach(detail => {
 //    anim  = controle da animação (t vai de 0 a 1)
 // ---------------------------------------------------------------------
 let loads = [], nid = 1, D = null, drag = null, anim = { t: 1 };
-// Preenche E, fy, τ e ρ quando o usuário escolhe um material da lista
-function setMat(k, n) { const m = MATS[n]; if (!m)
-    return; ['E', 'fy', 't', 'r'].forEach((p, i) => $(p + '_' + k).value = m[i]); }
+// Conversões de unidades: comprimentos internos em mm e geometria estrutural em m.
+const lengthToMM = (value, unit) => value * ({m:1000, cm:10, mm:1}[unit] || 1);
+const lengthToM = id => lengthToMM(v(id), $('u_' + id)?.value || 'm') / 1000;
+const areaToMM2 = (value, unit) => value * ({m2:1e6, cm2:100, mm2:1}[unit] || 1);
+const fieldMM = id => lengthToMM(v(id), $('u_' + id)?.value || 'mm');
+// Atualiza o campo de nome e preenche propriedades de materiais conhecidos.
+function setMat(k, n) { const m = MATS[n]; $('custom_' + k).style.display = n == 'Personalizado' ? '' : 'none'; if (!m) return; ['E', 'fy', 't', 'r'].forEach((p, i) => $(p + '_' + k).value = m[i]); }
 // Volta para o caso-teste oficial (valores padrão) e recalcula
 function restore() {
-    const dv = { L: 3, B: 1, C: 3, LA: 1.5, LB: 1, b_beam: 100, h_beam: 200, b_bd: 20, h_bd: 20, b_ce: 20, h_ce: 20, d_B: 20, d_C: 20, n_B: 2, n_C: 2 };
-    Object.entries(dv).forEach(([k, x]) => $(k).value = x);
-    ['beam', 'bd', 'ce'].forEach(k => { $('s_' + k).value = 'r'; $('dd_' + k).value = 20; });
+    const dv = { L: 3, B: 1, C: 3, LA: 1.5, LB: 1, b_beam: 100, h_beam: 200, b_bd: 20, h_bd: 20, b_ce: 20, h_ce: 20, d_B: 20, d_C: 20, n_B: 2, n_C: 2, tb_B:10, tm_B:10, tb_C:10, tm_C:10 };
+    Object.entries(dv).forEach(([k, x]) => { if ($(k)) $(k).value = x; });
+    ['L','B','C','LA','LB'].forEach(k => $('u_'+k).value = 'm');
+    ['beam', 'bd', 'ce'].forEach(k => { $('s_' + k).value = 'r'; $('mode_'+k).value='dims'; $('dd_' + k).value = 20; $('u_b_'+k).value='mm'; $('u_h_'+k).value='mm'; $('u_dd_'+k).value='mm'; $('u_area_'+k).value='mm2'; $('u_areaB_'+k).value='mm'; });
+    ['B','C'].forEach(k => { ['d_','tb_','tm_'].forEach(prefix => $('u_'+prefix+k).value='mm'); });
     ['B', 'C'].forEach(s => $('sh_' + s).value = 'single');
     EL.forEach(([k]) => { $('m_' + k).value = 'Aço estrutural'; setMat(k, 'Aço estrutural'); });
     $('lam').value = 100;
@@ -71,7 +81,7 @@ function restore() {
 }
 // Adiciona uma nova carga (F, Q ou M) com valores iniciais
 function addLoad(t) {
-    const L = v('L'), b = { id: nid++, t };
+    const L = lengthToM('L'), b = { id: nid++, t };
     if (t == 'F')
         Object.assign(b, { P: 10, u: 'kN', ang: 270, x: +(L / 2).toFixed(2) });
     if (t == 'Q')
@@ -90,7 +100,7 @@ function setL(id, k, val) {
     l[k] = ['t', 'u', 'dir', 'sense'].includes(k) ? val : (parseFloat(val) || 0);
     if (k == 't') {
         const keep = { id: l.id, t: val };
-        const L = v('L');
+        const L = lengthToM('L');
         Object.keys(l).forEach(x => delete l[x]);
         Object.assign(l, keep);
         if (val == 'F')
@@ -123,20 +133,29 @@ function renderLoads() {
 //    Círculo:   A = π·d²/4     I = π·d⁴/64      c = d/2
 //    W = I/c (módulo resistente)   r = √(I/A) (raio de giração)
 // ---------------------------------------------------------------------
-const sec = k => { const t = $('s_' + k).value; let A, I, c; if (t == 'r') {
-    const b = v('b_' + k), h = v('h_' + k);
-    A = b * h;
-    I = b * h ** 3 / 12;
-    c = h / 2;
+const sec = k => {
+    const t = $('s_' + k).value, mode = $('mode_' + k).value;
+    let A, I, c, b = 0, h = 0, d = 0;
+    if (mode == 'area') {
+        A = areaToMM2(v('area_' + k), $('u_area_' + k).value);
+        if (t == 'r') {
+            b = fieldMM('areaB_' + k);
+            h = b > 0 ? A / b : 0;
+        } else {
+            d = A > 0 ? Math.sqrt(4 * A / Math.PI) : 0;
+        }
+    } else if (t == 'r') {
+        b = fieldMM('b_' + k); h = fieldMM('h_' + k); A = b * h;
+    } else {
+        d = fieldMM('dd_' + k); A = Math.PI * d * d / 4;
+    }
+    if (t == 'r') { I = b * h ** 3 / 12; c = h / 2; }
+    else { I = Math.PI * d ** 4 / 64; c = d / 2; }
+    return { t, mode, A, I, c, W: I / c, r: Math.sqrt(I / A), b, h, d };
 }
-else {
-    const d = v('dd_' + k);
-    A = Math.PI * d * d / 4;
-    I = Math.PI * d ** 4 / 64;
-    c = d / 2;
-} return { t, A, I, c, W: I / c, r: Math.sqrt(I / A), b: v('b_' + k), h: v('h_' + k), d: v('dd_' + k) }; };
 // Lê as propriedades do material de um elemento
 const mat = k => ({ E: v('E_' + k), fy: v('fy_' + k), tau: v('t_' + k), rho: v('r_' + k) });
+const matName = k => $('m_' + k).value == 'Personalizado' ? ($('mn_' + k).value.trim() || 'Personalizado') : $('m_' + k).value;
 // Figura da seção transversal (SVG) mostrada ao lado dos campos
 function fig(p) {
     if (p.t == 'c')
@@ -151,7 +170,7 @@ function fig(p) {
 // =====================================================================
 function calc() {
     // 5.1 Lê a geometria e limita B e C para ficarem dentro da viga
-    let L = v('L'), B = v('B'), C = v('C');
+    let L = lengthToM('L'), B = lengthToM('B'), C = lengthToM('C');
     const err = [];
     if (!(L > 0))
         err.push('O comprimento L deve ser positivo.');
@@ -159,16 +178,21 @@ function calc() {
     C = Math.min(Math.max(C, 0), L);
     if (Math.abs(C - B) < 1e-6)
         err.push('B e C não podem coincidir.');
+    ['B','C'].forEach(j => { if (!(fieldMM('d_'+j) > 0)) err.push('O diâmetro do pino '+j+' deve ser positivo.'); if (!(fieldMM('tb_'+j) > 0) || !(fieldMM('tm_'+j) > 0)) err.push('As espessuras das peças na ligação '+j+' devem ser positivas.'); });
     // 5.2 Calcula as propriedades das seções (viga, BD, CE) e valida os dados
     const sc = {};
     EL.slice(0, 3).forEach(([k]) => {
         const p = sc[k] = sec(k);
-        $('rect_' + k).style.display = p.t == 'r' ? '' : 'none';
-        $('circ_' + k).style.display = p.t == 'c' ? '' : 'none';
+        $('dims_' + k).style.display = p.mode == 'dims' ? '' : 'none';
+        $('area_' + k).style.display = p.mode == 'area' ? '' : 'none';
+        $('rect_' + k).style.display = p.t == 'r' && p.mode == 'dims' ? '' : 'none';
+        $('circ_' + k).style.display = p.t == 'c' && p.mode == 'dims' ? '' : 'none';
+        $('areaRect_' + k).style.display = p.t == 'r' && p.mode == 'area' ? '' : 'none';
+        $('areaCirc_' + k).style.display = p.t == 'c' && p.mode == 'area' ? '' : 'none';
         $('fig_' + k).innerHTML = fig(p);
-        $('pr_' + k).innerHTML = `A = ${fmt(p.A, 1)} mm²<br>I = ${fmt(p.I, 0)} mm⁴<br>W = ${fmt(p.W, 0)} mm³<br>r = ${fmt(p.r, 2)} mm`;
-        if (!(p.A > 0))
-            err.push('Dimensões de ' + k + ' inválidas.');
+        $('pr_' + k).innerHTML = `A = ${fmt(p.A, 1)} mm²<br>I = ${fmt(p.I, 0)} mm⁴<br>W = ${fmt(p.W, 0)} mm³<br>r = ${fmt(p.r, 2)} mm${p.mode == 'area' ? '<br><b>Geometria equivalente:</b> ' + (p.t == 'r' ? `b=${fmt(p.b,2)} mm · h=${fmt(p.h,2)} mm` : `d=${fmt(p.d,2)} mm`) : ''}`;
+        if (!(p.A > 0) || !(p.I > 0) || !(p.c > 0))
+            err.push('Dimensões ou propriedades geométricas de ' + k + ' inválidas. Confira a área e as dimensões complementares.');
     });
     if (err.length) {
         $('msg').innerHTML = '<span style="color:#b42318">' + err.join('<br>') + '</span>';
@@ -178,7 +202,7 @@ function calc() {
     // 5.3 Multiplicador de carga (simulação de aumento progressivo)
     const lam = v('lam') / 100;
     $('lamv').textContent = '×' + fmt(lam, 2);
-    const LA = v('LA'), LB = v('LB'), mb = mat('beam'), mA = mat('bd'), mB = mat('ce'), sb = sc.beam, sA = sc.bd, sB = sc.ce;
+    const LA = lengthToM('LA'), LB = lengthToM('LB'), mb = mat('beam'), mA = mat('bd'), mB = mat('ce'), sb = sc.beam, sA = sc.bd, sB = sc.ce;
     // 5.4 Converte todas as cargas para N e N·m e soma:
     //     sFy = soma das forças verticais | sFx = soma das horizontais
     //     sMB / sMC = soma dos momentos das cargas em relação a B e a C
@@ -269,11 +293,13 @@ function calc() {
         xdm = p.x;
     } });
     // 5.8 Pinos: τ = F / (nº pinos · planos de corte · π·d²/4); força de ruptura = τ_rup · área
-    const pin = (s, N) => { const d = v('d_' + s), np = Math.max(1, Math.round(v('n_' + s))), pl = $('sh_' + s).value == 'double' ? 2 : 1, m = mat('p' + s), A = Math.PI * d * d / 4 * np * pl; return { s, d, np, pl, A, tau: Math.abs(N) / A, tauR: m.tau, Fr: m.tau * A, F: Math.abs(N) }; };
-    const pB = pin('B', N_BD), pC = pin('C', N_CE);
+    const pin = (s, N, barKey) => { const d = fieldMM('d_' + s), np = Math.max(1, Math.round(v('n_' + s))), pl = $('sh_' + s).value == 'double' ? 2 : 1, m = mat('p' + s), A0 = Math.PI * d * d / 4, A = A0 * np * pl, F = Math.abs(N), tBeam = fieldMM('tb_' + s), tMember = fieldMM('tm_' + s), beamMat = mat('beam'), memberMat = mat(barKey); const bearingBeam = { member:'Viga AC', t:tBeam, sigma:F/(np*d*tBeam), fy:beamMat.fy }; const bearingBar = { member:barKey == 'bd' ? 'Barra BD' : 'Barra CE', t:tMember, sigma:F/(np*d*tMember), fy:memberMat.fy }; [bearingBeam,bearingBar].forEach(x => { x.fs = x.sigma < 1e-9 ? Infinity : x.fy/x.sigma; x.c = x.fs < 1 ? 'f' : x.fs < 1.5 ? 'a' : 's'; }); return { s, d, np, pl, A, A0, tau:F/A, tauR:m.tau, Fr:m.tau*A, F, tBeam, tMember, bearing:[bearingBeam,bearingBar] }; };
+    const pB = pin('B', N_BD, 'bd'), pC = pin('C', N_CE, 'ce');
     // 5.9 Verificação: fator de segurança FS = limite / tensão atuante
     //     FS < 1 falha | 1 a 1,5 atenção | acima de 1,5 seguro
-    const els = [{ n: 'Viga AC', s: sigC, lim: mb.fy, k: 'beam' }, { n: 'Barra BD', s: Math.abs(N_BD) / sA.A, lim: mA.fy, k: 'bd' }, { n: 'Barra CE', s: Math.abs(N_CE) / sB.A, lim: mB.fy, k: 'ce' }, { n: 'Pino B', s: pB.tau, lim: pB.tauR, k: 'pB', pin: 1 }, { n: 'Pino C', s: pC.tau, lim: pC.tauR, k: 'pC', pin: 1 }];
+    const els = [{ n: 'Viga AC', s: sigC, lim: mb.fy, k: 'beam' }, { n: 'Barra BD', s: Math.abs(N_BD) / sA.A, lim: mA.fy, k: 'bd' }, { n: 'Barra CE', s: Math.abs(N_CE) / sB.A, lim: mB.fy, k: 'ce' }, { n: 'Pino B', s: pB.tau, lim: pB.tauR, k: 'pB', pin: 1 }, { n: 'Pino C', s: pC.tau, lim: pC.tauR, k: 'pC', pin: 1 },
+        ...pB.bearing.map((b,i) => ({ n: `Esmagamento ${b.member} (B)`, s:b.sigma, lim:b.fy, k:`bearingB${i}`, bearing:1 })),
+        ...pC.bearing.map((b,i) => ({ n: `Esmagamento ${b.member} (C)`, s:b.sigma, lim:b.fy, k:`bearingC${i}`, bearing:1 }))];
     els.forEach(e => { e.fs = e.s < 1e-9 ? Infinity : e.lim / e.s; e.c = e.fs < 1 ? 'f' : e.fs < 1.5 ? 'a' : 's'; });
     const st = {};
     els.forEach(e => st[e.k] = e.c);
@@ -307,14 +333,15 @@ function render() {
         ['Tensão máx. na viga', fmt(d.sigC) + ' MPa', 'flexão + axial'], ['Deslocamento máx.', fmt(d.dmax * 1000) + ' mm', 'em x = ' + fmt(d.xdm) + ' m'], ['Menor FS', fmt(first.fs, 2), first.n]].map(m => `<div class="met"><small>${m[0]}</small><b>${m[1]}</b><small>${m[2]}</small></div>`).join('');
     $('quick').innerHTML = `<table><tbody>${d.els.map(e => `<tr><td>${e.n}</td><td>${lab(e)}</td><td>FS = ${fmt(e.fs, 2)}</td></tr>`).join('')}</tbody></table>`;
     $('eq').innerHTML = `<tr><td>ΣFy = F_BD,y + R_C + ΣFy aplicadas</td><td>${fmt((d.R_B + d.R_C + d.sFy) / 1000, 6)} kN</td></tr><tr><td>ΣFx (inclui H em B)</td><td>${fmt((d.sFx + d.H) / 1000, 6)} kN</td></tr><tr><td>Reação vertical do apoio B (R_B, ↑)</td><td>${kN(d.R_B)} kN</td></tr><tr><td>Reação vertical do apoio C (R_C, ↑)</td><td>${kN(d.R_C)} kN</td></tr><tr><td>Reação horizontal H em B</td><td>${kN(d.H)} kN</td></tr>`;
-    const bar = (nm, N, s, L, m, dl, k) => `<tr><td>Esforço axial N</td><td>${kN(N)} kN ${N >= 0 ? chip('s', 'TRAÇÃO') : chip('f', 'COMPRESSÃO')}</td></tr><tr><td>Seção</td><td>${s.t == 'r' ? `retangular ${s.b}×${s.h} mm` : `circular d=${s.d} mm`}</td></tr><tr><td>Área</td><td>${fmt(s.A, 1)} mm²</td></tr><tr><td>Tensão σ</td><td>${fmt(Math.abs(N) / s.A)} MPa (fy = ${m.fy})</td></tr><tr><td>Comprimento</td><td>${fmt(L * 1000, 0)} mm</td></tr><tr><td>Variação de comprimento</td><td>${fmt(dl * 1000, 4)} mm (${dl >= 0 ? 'alongamento' : 'encurtamento'})</td></tr><tr><td>ρ / massa</td><td>${m.rho} kg/m³ / ${fmt(m.rho * s.A * 1e-6 * L, 2)} kg</td></tr><tr><td>Estado</td><td>${lab(d.els.find(e => e.k == k))}</td></tr>`;
+    const bar = (nm, N, s, L, m, dl, k) => `<tr><td>Material</td><td>${matName(k)}</td></tr><tr><td>Esforço axial N</td><td>${kN(N)} kN ${N >= 0 ? chip('s', 'TRAÇÃO') : chip('f', 'COMPRESSÃO')}</td></tr><tr><td>Seção</td><td>${s.t == 'r' ? `retangular ${s.b}×${s.h} mm` : `circular d=${s.d} mm`}</td></tr><tr><td>Área</td><td>${fmt(s.A, 1)} mm²</td></tr><tr><td>Tensão σ</td><td>${fmt(Math.abs(N) / s.A)} MPa (fy = ${m.fy})</td></tr><tr><td>Comprimento</td><td>${fmt(L * 1000, 0)} mm</td></tr><tr><td>Variação de comprimento</td><td>${fmt(dl * 1000, 4)} mm (${dl >= 0 ? 'alongamento' : 'encurtamento'})</td></tr><tr><td>ρ / massa</td><td>${m.rho} kg/m³ / ${fmt(m.rho * s.A * 1e-6 * L, 2)} kg</td></tr><tr><td>Estado</td><td>${lab(d.els.find(e => e.k == k))}</td></tr>`;
     $('tBD').innerHTML = bar('BD', d.N_BD, d.sA, d.LA, d.mA, d.dBD, 'bd');
     $('tCE').innerHTML = bar('CE', d.N_CE, d.sB, d.LB, d.mB, d.dCE, 'ce');
-    $('tPins').innerHTML = [d.pB, d.pC].map(p => `<tr><td>${p.s} (d=${p.d} mm)</td><td>${p.np} × ${p.pl}</td><td>${fmt(p.A, 1)} mm²</td><td>${fmt(p.tau)} MPa</td><td>${fmt(p.tauR)} MPa</td><td>${kN(p.Fr)} kN</td><td>${fmt(p.fs, 2)}</td><td>${p.c == 'f' ? chip('f', 'ROMPIDO') : p.c == 'a' ? chip('a', 'PRÓXIMO DO LIMITE') : p.fs === Infinity ? chip('n', 'SEM ESFORÇO') : chip('s', 'SEGURO')}</td></tr>`).join('');
+    $('tPins').innerHTML = [d.pB, d.pC].map(p => `<tr><td>${p.s} (d=${fmt(p.d,2)} mm)</td><td>${matName('p'+p.s)}</td><td>${p.np} × ${p.pl}</td><td>${fmt(p.A, 1)} mm²</td><td>${fmt(p.tau)} MPa</td><td>${fmt(p.tauR)} MPa</td><td>${kN(p.Fr)} kN</td><td>${fmt(p.fs, 2)}</td><td>${p.c == 'f' ? chip('f', 'ROMPIDO') : p.c == 'a' ? chip('a', 'PRÓXIMO DO LIMITE') : p.fs === Infinity ? chip('n', 'SEM ESFORÇO') : chip('s', 'SEGURO')}</td></tr>`).join('');
+    $('tBearing').innerHTML = [d.pB,d.pC].flatMap(p => p.bearing.map(b => { const c=b.c, status=c=='f'?chip('f','FALHA'):c=='a'?chip('a','ATENÇÃO'):b.fs===Infinity?chip('n','SEM ESFORÇO'):chip('s','SEGURO'); return `<tr><td>${p.s}</td><td>${b.member}</td><td>${fmt(b.t,2)} mm</td><td>${fmt(b.sigma)} MPa</td><td>${fmt(b.fy)} MPa</td><td>${fmt(b.fs,2)}</td><td>${status}</td></tr>`; })).join('');
     const pts = [['A (x=0)', d.at(0) + d.a1], ['B', d.yB], ['C', d.yC], ['D (fixo)', 0], ['E (fixo)', 0], [`Máx. da viga (x=${fmt(d.xdm)} m)`, d.S.reduce((m, p) => Math.abs(p.y) >= Math.abs(m) ? p.y : m, 0)]];
     $('tDisp').innerHTML = pts.map(p => `<tr><td>${p[0]}</td><td>${fmt(p[1] * 1000, 4)} mm</td><td>${Math.abs(p[1]) < 1e-12 ? '—' : p[1] > 0 ? '↑ para cima' : '↓ para baixo'}</td></tr>`).join('');
     $('tBars').innerHTML = `<tr><td>BD: δ = N·L/(E·A)</td><td>${fmt(d.dBD * 1000, 4)} mm — ${d.dBD >= 0 ? 'alongou' : 'encurtou'} (ponto B ${d.yB <= 0 ? 'desce' : 'sobe'})</td></tr><tr><td>CE: δ = N·L/(E·A)</td><td>${fmt(d.dCE * 1000, 4)} mm — ${d.dCE >= 0 ? 'alongou' : 'encurtou'} (ponto C ${d.yC >= 0 ? 'sobe' : 'desce'})</td></tr>`;
-    $('tDiag').innerHTML = d.els.map(e => `<tr><td>${e.n}</td><td>${fmt(e.s)} MPa</td><td>${fmt(e.lim)} MPa ${e.pin ? '(τ rup.)' : '(fy)'}</td><td>${fmt(e.fs, 2)}</td><td>${lab(e)}</td><td>${barHtml(e)}</td></tr>`).join('');
+    $('tDiag').innerHTML = d.els.map(e => `<tr><td>${e.n}</td><td>${fmt(e.s)} MPa</td><td>${fmt(e.lim)} MPa ${e.pin ? '(τ rup.)' : e.bearing ? '(fy — esmagamento)' : '(fy)'}</td><td>${fmt(e.fs, 2)}</td><td>${lab(e)}</td><td>${barHtml(e)}</td></tr>`).join('');
     const so = [...d.els].filter(e => e.fs !== Infinity).sort((a, b) => a.fs - b.fs);
     $('order').innerHTML = so.length ? `<table><thead><tr><th>Ordem</th><th>Elemento</th><th>Falha com carga ×(carga base)</th><th>Situação atual</th></tr></thead><tbody>${so.map((e, i) => `<tr><td>${i + 1}º</td><td>${e.n}</td><td>${fmt(e.fs * d.lam, 2)}</td><td>${lab(e)}</td></tr>`).join('')}</tbody></table><div class="note" style="margin-top:8px"><b>Mais solicitado / primeiro a falhar: ${so[0].n}</b> — com as cargas atuais (×${fmt(d.lam, 2)}), ele atinge o limite quando as cargas forem multiplicadas por ${fmt(so[0].fs, 2)} (carga base × ${fmt(so[0].fs * d.lam, 2)}). Mova o multiplicador acima para ver o colapso no desenho.</div>` : 'Sem esforços.';
     charts(d);
@@ -344,9 +371,9 @@ function mRight(d, x) {
 function validation(d) {
     const Mr = mRight(d, d.Mx.x), sg = Math.abs(d.Mx.M) * 1e3 * d.sb.c / d.sb.I, sg2 = Math.abs(Mr) * 1e3 * d.sb.c / d.sb.I;
     const R_B2 = -d.sFy - d.R_C;
-    const rows = [['ΣFy (equilíbrio)', (d.R_B + d.R_C + d.sFy) / 1000, 0, 'kN'], ['ΣM em B', (d.R_C * (d.C - d.B) + d.sMB) / 1000, 0, 'kN·m'], ['R_B (momento em C) × R_B (ΣFy=0)', d.R_B / 1000, R_B2 / 1000, 'kN'], ['|Mmax| (trecho esquerdo) × (trecho direito)', Math.abs(d.Mx.M) / 1000, Math.abs(Mr) / 1000, 'kN·m'], ['σ flexão = M·c/I', d.sigFlex, sg2, 'MPa'], ['τ pino B = F/(n·planos·πd²/4)', d.pB.tau, Math.abs(d.N_BD) / d.pB.A, 'MPa']];
+    const rows = [['ΣFy (equilíbrio)', (d.R_B + d.R_C + d.sFy) / 1000, 0, 'kN'], ['ΣM em B', (d.R_C * (d.C - d.B) + d.sMB) / 1000, 0, 'kN·m'], ['R_B (momento em C) × R_B (ΣFy=0)', d.R_B / 1000, R_B2 / 1000, 'kN'], ['|Mmax| (trecho esquerdo) × (trecho direito)', Math.abs(d.Mx.M) / 1000, Math.abs(Mr) / 1000, 'kN·m'], ['σ flexão = M·c/I', d.sigFlex, sg2, 'MPa'], ['τ pino B = F/(n·planos·πd²/4)', d.pB.tau, Math.abs(d.N_BD) / d.pB.A, 'MPa'], ['σ esmagamento viga em B = F/(n·d·t)', d.pB.bearing[0].sigma, Math.abs(d.N_BD)/(d.pB.np*d.pB.d*d.pB.tBeam), 'MPa']];
     $('tVal').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${fmt(r[1], 5)} ${r[3]}</td><td>${fmt(r[2], 5)} ${r[3]}</td><td>${fmt(Math.abs(r[1] - r[2]), 6)}</td></tr>`).join('');
-    $('valMsg').innerHTML = `<b>Conferência à mão:</b> ΣM em B: R_C·(x_C − x_B) + Σ[Fy·(x − x_B)] + ΣM₀ = 0 → R_C = ${fmt(d.R_C / 1000)} kN; ΣFy = 0 → R_B = ${fmt(d.R_B / 1000)} kN. Barra BD: N = R_B; barra CE: N = −R_C (R_C ↑ comprime a barra inferior). Tensão σ = N/A; flexão σ = M·c/I; cisalhamento do pino τ = F/(n·planos·πd²/4); deslocamento δ = N·L/(E·A).`;
+    $('valMsg').innerHTML = `<b>Conferência à mão:</b> ΣM em B: R_C·(x_C − x_B) + Σ[Fy·(x − x_B)] + ΣM₀ = 0 → R_C = ${fmt(d.R_C / 1000)} kN; ΣFy = 0 → R_B = ${fmt(d.R_B / 1000)} kN. Barra BD: N = R_B; barra CE: N = −R_C (R_C ↑ comprime a barra inferior). Tensão σ = N/A; flexão σ = M·c/I; cisalhamento do pino τ = F/(n·planos·πd²/4); esmagamento simplificado σesm = F/(n·d·t), com FS = fy/σesm; deslocamento δ = N·L/(E·A).`;
 }
 // =====================================================================
 // 7. GRÁFICOS N, V e M
@@ -709,8 +736,8 @@ cvs.addEventListener('pointercancel', endDrag);
 // eventos gerais
 $('side').addEventListener('input', e => { const id = e.target.id || ''; let m; if (id.startsWith('m_'))
     setMat(id.slice(2), e.target.value);
-else if (m = id.match(/^(E|fy|t|r)_(\w+)$/))
-    $('m_' + m[2]).value = 'Personalizado'; calc(); });
+else if (m = id.match(/^(E|fy|t|r)_(\w+)$/)) { $('m_' + m[2]).value = 'Personalizado'; setMat(m[2], 'Personalizado'); } calc(); });
+$('side').addEventListener('change', e => { const id=e.target.id||''; if(id.startsWith('m_')) setMat(id.slice(2),e.target.value); calc(); });
 ['lam', 'ampMode', 'ampK'].forEach(i => $(i).addEventListener('input', () => i == 'lam' ? calc() : drawAll()));
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.tab,.panel').forEach(x => x.classList.remove('on')); b.classList.add('on'); $(b.dataset.t).classList.add('on'); anim.t = 1; if (D) {
     charts(D);
@@ -732,14 +759,15 @@ function report() {
     const html = `<html><head><meta charset="utf-8"><title>Relatório A3</title><style>body{font-family:Arial;margin:24px;color:#111}h1{font-size:20px}h2{font-size:15px;border-bottom:1px solid #999;margin-top:20px}</style></head><body>
 <h1>A3 — Relatório da Calculadora Estrutural</h1><small>Resistência dos Materiais I · ${new Date().toLocaleString('pt-BR')}</small>
 <h2>1. Dados de entrada</h2><p>L=${d.L} m · B=${d.B} m · C=${d.C} m · L_BD=${d.LA} m · L_CE=${d.LB} m · multiplicador de carga ×${fmt(d.lam, 2)}</p><p>Viga AC: ${secT(d.sb)} · Barra BD: ${secT(d.sA)} · Barra CE: ${secT(d.sB)}</p><p>${loadT.join('<br>')}</p>
-<p>Pino B: ${d.pB.np} × Ø${d.pB.d} mm, ${d.pB.pl} plano(s) · Pino C: ${d.pC.np} × Ø${d.pC.d} mm, ${d.pC.pl} plano(s)</p>
-<h2>2. Materiais</h2>${tb(['Elemento', 'Material', 'E (GPa)', 'fy (MPa)', 'τ rup. (MPa)', 'ρ (kg/m³)'], EL.map(([q, n]) => { const m = mat(q); return [n, $('m_' + q).value, m.E, m.fy, m.tau, m.rho]; }))}
+<p>Pino B: ${d.pB.np} × Ø${fmt(d.pB.d,2)} mm, ${d.pB.pl} plano(s) · Pino C: ${d.pC.np} × Ø${fmt(d.pC.d,2)} mm, ${d.pC.pl} plano(s)</p><p>Espessuras na ligação B: viga ${fmt(d.pB.tBeam,2)} mm e barra BD ${fmt(d.pB.tMember,2)} mm. Ligação C: viga ${fmt(d.pC.tBeam,2)} mm e barra CE ${fmt(d.pC.tMember,2)} mm.</p>
+<h2>2. Materiais</h2>${tb(['Elemento', 'Material', 'E (GPa)', 'fy (MPa)', 'τ rup. (MPa)', 'ρ (kg/m³)'], EL.map(([q, n]) => { const m = mat(q); return [n, matName(q), m.E, m.fy, m.tau, m.rho]; }))}
 <h2>3. Modelo e deformada</h2>${im(drawStructure, 900, 0, d)}
 <h2>4. Memória de cálculo</h2><p>ΣM_B=0: R_C·(${d.C}−${d.B}) + ${fmt(d.sMB / 1000, 4)} kN·m = 0 → R_C = ${k(d.R_C)} kN<br>ΣFy=0: R_B = ${k(d.R_B)} kN · H em B = ${k(d.H)} kN<br>N_BD = ${k(d.N_BD)} kN · N_CE = −R_C = ${k(d.N_CE)} kN (positivo = tração)<br>|M|máx = ${k(Math.abs(d.Mx.M))} kN·m em x=${fmt(d.Mx.x)} m → σ = M·c/I = ${fmt(d.sigFlex)} MPa (c=${fmt(d.sb.c, 1)} mm, I=${fmt(d.sb.I, 0)} mm⁴)<br>σ_BD = ${fmt(Math.abs(d.N_BD) / d.sA.A)} MPa · σ_CE = ${fmt(Math.abs(d.N_CE) / d.sB.A)} MPa<br>τ_B = ${fmt(d.pB.tau)} MPa · τ_C = ${fmt(d.pC.tau)} MPa<br>δ_BD = N·L/(E·A) = ${fmt(d.dBD * 1000, 4)} mm · δ_CE = ${fmt(d.dCE * 1000, 4)} mm</p>
 <h2>5. Diagramas N, V, M</h2>${im(drawChart, 800, 0, d.S, 'N', 'Esforço normal N(x)', 'kN', d.L)}${im(drawChart, 800, 0, d.S, 'V', 'Esforço cortante V(x)', 'kN', d.L)}${im(drawChart, 800, 0, d.S, 'M', 'Momento fletor M(x)', 'kN·m', d.L)}
 <h2>6. Deslocamentos</h2>${tb(['Ponto', 'Deslocamento vertical (mm, ↑+)'], [['A', fmt((d.at(0) + d.a1) * 1000, 4)], ['B', fmt(d.yB * 1000, 4)], ['C', fmt(d.yC * 1000, 4)], ['D / E', '0 (fixos)'], ['Máx. viga', fmt(d.dmax * 1000, 4) + ' em x=' + fmt(d.xdm) + ' m']])}
 <h2>7. Verificação dos pinos</h2>${tb(['Pino', 'τ atuante', 'τ ruptura', 'F ruptura (kN)', 'FS', 'Estado'], [d.pB, d.pC].map(p => ['Pino ' + p.s, fmt(p.tau), fmt(p.tauR), k(p.Fr), fmt(p.fs, 2), p.c == 'f' ? 'ROMPIDO' : p.c == 'a' ? 'ATENÇÃO' : 'SEGURO']))}
-<h2>8. Diagnóstico final</h2>${tb(['Elemento', 'Tensão (MPa)', 'Limite (MPa)', 'FS', 'Resultado'], d.els.map(e => [e.n, fmt(e.s), fmt(e.lim), fmt(e.fs, 2), e.c == 'f' ? (e.pin ? 'ROMPIDO' : 'FALHA') : e.c == 'a' ? 'ATENÇÃO' : 'SEGURO']))}
+<h2>8. Esmagamento das chapas (critério simplificado)</h2><p>σesm = F/(n·d·t) e FS = fy/σesm. A tensão de escoamento fy é utilizada como referência simplificada para a pressão média de contato; não substitui uma verificação normativa completa de ligações.</p>${tb(['Ligação','Peça','Espessura (mm)','σ esm (MPa)','fy (MPa)','FS','Estado'], [d.pB,d.pC].flatMap(p => p.bearing.map(b => [p.s,b.member,fmt(b.t,2),fmt(b.sigma),fmt(b.fy),fmt(b.fs,2),b.c=='f'?'FALHA':b.c=='a'?'ATENÇÃO':'SEGURO'])))}
+<h2>9. Diagnóstico final</h2>${tb(['Elemento', 'Tensão (MPa)', 'Limite (MPa)', 'FS', 'Resultado'], d.els.map(e => [e.n, fmt(e.s), fmt(e.lim), fmt(e.fs, 2), e.c == 'f' ? (e.pin ? 'ROMPIDO' : 'FALHA') : e.c == 'a' ? 'ATENÇÃO' : 'SEGURO']))}
 </body></html>`;
     const w = window.open('', '_blank');
     if (!w) {
